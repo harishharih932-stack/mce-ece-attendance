@@ -30,8 +30,8 @@ function speak(text) {
     speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(text);
     utt.voice  = _voice;
-    utt.rate   = 1.15;
-    utt.pitch  = 1.1;
+    utt.rate   = 1.9; // Super fast Mangaluru style
+    utt.pitch  = 1.0;
     utt.volume = 1.0;
     utt.onend  = resolve;
     utt.onerror = resolve;
@@ -41,8 +41,9 @@ function speak(text) {
 
 // ── GROQ WHISPER — voice detection ──────────────────────────────────────────
 
-const PRESENT_WORDS = ['present','yes','here','haan','han','yep','yeah','yah','ha'];
-const ABSENT_WORDS  = ['absent','no','not here','nahi','nai','illa','nope'];
+const PRESENT_WORDS = ['present','yes','here','haan','han','yep','yeah','yah','prent','presents','pragent','presen'];
+// 'ha' removed because it causes false positives with noise
+const ABSENT_WORDS  = ['absent','no','not here','nahi','nai','illa','nope','absunt'];
 
 async function recordAndTranscribe(seconds) {
   const cfg = JSON.parse(localStorage.getItem('config') || '{}');
@@ -68,6 +69,7 @@ async function recordAndTranscribe(seconds) {
         formData.append('model',           'whisper-large-v3-turbo');
         formData.append('response_format', 'text');
         formData.append('language',        'en');
+        formData.append('prompt',          'The user is saying "present" or "absent" for attendance. They might have an Indian accent.');
 
         const res  = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
           method:  'POST',
@@ -87,9 +89,14 @@ async function recordAndTranscribe(seconds) {
   });
 }
 
-function classifyResponse(text) {
+function classifyResponse(text, studentName = '') {
   if (!text) return null;
-  if (PRESENT_WORDS.some(w => text.includes(w))) return 'present';
-  if (ABSENT_WORDS.some(w =>  text.includes(w))) return 'absent';
+  const clean = text.toLowerCase().replace(/[.,!?;:]/g, '').trim();
+  
+  // If the computer hears itself say the student's name, don't count it as 'present'
+  if (studentName && clean === studentName.toLowerCase()) return null;
+
+  if (PRESENT_WORDS.some(w => clean.includes(w))) return 'present';
+  if (ABSENT_WORDS.some(w =>  clean.includes(w))) return 'absent';
   return null;
 }

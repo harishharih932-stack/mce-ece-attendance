@@ -168,7 +168,7 @@ async function startAttendance() {
     const txt1 = await rec1;             
 
     // Check manual override
-    let result = manualResult || classifyResponse(txt1);
+    let result = manualResult || classifyResponse(txt1, spoken);
 
     // ── ONE QUICK RETRY ONLY IF SILENT ──
     if (!result && !stopFlag) {
@@ -176,7 +176,7 @@ async function startAttendance() {
       const rec2 = recordAndTranscribe(1.5); // Very quick retry
       await speak(spoken);
       const txt2 = await rec2;
-      result = manualResult || classifyResponse(txt2);
+      result = manualResult || classifyResponse(txt2, spoken);
     }
 
     // ── DECIDE ──

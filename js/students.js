@@ -75,8 +75,10 @@ const PRONOUNCE = {
   "Lohith":"Lohit", "Chinmay":"Chinmai", "Chiranth":"Chirant",
   "Maruthi":"Maruthi", "Harshitha":"Harshita", "Varshitha":"Varshita",
   "Chethana":"Chethana", "Keerthan":"Keertan", "Keerthana":"Keertana",
-  "Kruthika":"Krutika", "B Varshitha":"B. Varshitha", "C Karthik":"C. Karthik",
-  "N P Harsha":"N P Harsha", "N S Gagan":"N S Gagan",
+  "Kruthika":"Krutika", 
+  "B Varshitha":"Varshitha", "C Karthik":"Karthik",
+  "N P Harsha":"Harsha", "N S Gagan":"Gagan",
+  "A D Abhilasha":"Abhilasha", "Aadhya Kiran B":"Aadhya Kiran",
 };
 
 function pronounceable(name) {
