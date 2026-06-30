@@ -161,11 +161,12 @@ async function startAttendance() {
 
     const spoken = pronounceable(s.name);
 
-    // ── FIRST CALL — record starts BEFORE speaking ──
-    const rec1 = recordAndTranscribe(3);
-    await speak(`Hey ${spoken}, present?`);
+    // ── FIRST CALL ──
+    setCurrStatus('🔊 Calling…');
+    await speak(spoken); 
+    
     setCurrStatus('🎙 Listening…');
-    const txt1 = await rec1;
+    const txt1 = await recordAndTranscribe(2); // Record AFTER speaking
 
     // Check manual override
     let result = manualResult || classifyResponse(txt1);
@@ -173,10 +174,9 @@ async function startAttendance() {
     // ── RETRY if no clear response ──
     if (!result) {
       setCurrStatus('🔊 Retry…');
-      const rec2 = recordAndTranscribe(3);
-      await speak(`Aye ${spoken}, you there?`);
+      await speak("Again, " + spoken);
       setCurrStatus('🎙 Listening…');
-      const txt2 = await rec2;
+      const txt2 = await recordAndTranscribe(2);
       result = manualResult || classifyResponse(txt2);
     }
 
