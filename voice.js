@@ -30,8 +30,8 @@ function speak(text) {
     speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(text);
     utt.voice  = _voice;
-    utt.rate   = 1.15;
-    utt.pitch  = 1.1;
+    utt.rate   = 1.6; // Even faster Mangaluru style
+    utt.pitch  = 1.0;
     utt.volume = 1.0;
     utt.onend  = resolve;
     utt.onerror = resolve;
@@ -41,8 +41,8 @@ function speak(text) {
 
 // ── GROQ WHISPER — voice detection ──────────────────────────────────────────
 
-const PRESENT_WORDS = ['present','yes','here','haan','han','yep','yeah','yah','ha'];
-const ABSENT_WORDS  = ['absent','no','not here','nahi','nai','illa','nope'];
+const PRESENT_WORDS = ['present','yes','here','haan','han','yep','yeah','yah','ha','prent','presents','pragent','presen'];
+const ABSENT_WORDS  = ['absent','no','not here','nahi','nai','illa','nope','absunt'];
 
 async function recordAndTranscribe(seconds) {
   const cfg = JSON.parse(localStorage.getItem('config') || '{}');
@@ -68,6 +68,7 @@ async function recordAndTranscribe(seconds) {
         formData.append('model',           'whisper-large-v3-turbo');
         formData.append('response_format', 'text');
         formData.append('language',        'en');
+        formData.append('prompt',          'The user is saying "present" or "absent" for attendance. They might have an Indian accent.');
 
         const res  = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
           method:  'POST',
