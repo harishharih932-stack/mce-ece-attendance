@@ -163,9 +163,9 @@ async function startAttendance() {
 
     // ── CALL & LISTEN (Parallel) ──
     setCurrStatus('🎙 Calling & Listening…');
-    const rec1 = recordAndTranscribe(3.5); // Start listening first
-    await speak(spoken);                  // Say name while listening
-    const txt1 = await rec1;             // Wait for record to finish
+    const rec1 = recordAndTranscribe(2.0); // Reduced to 2s for speed
+    await speak(spoken);                  
+    const txt1 = await rec1;             
 
     // Check manual override
     let result = manualResult || classifyResponse(txt1);
@@ -173,8 +173,8 @@ async function startAttendance() {
     // ── ONE QUICK RETRY ONLY IF SILENT ──
     if (!result && !stopFlag) {
       setCurrStatus('🔊 One more try…');
-      const rec2 = recordAndTranscribe(2.5);
-      await speak("Quickly, " + spoken);
+      const rec2 = recordAndTranscribe(1.5); // Very quick retry
+      await speak(spoken);
       const txt2 = await rec2;
       result = manualResult || classifyResponse(txt2);
     }

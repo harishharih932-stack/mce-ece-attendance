@@ -30,7 +30,7 @@ function speak(text) {
     speechSynthesis.cancel();
     const utt = new SpeechSynthesisUtterance(text);
     utt.voice  = _voice;
-    utt.rate   = 1.6; // Even faster Mangaluru style
+    utt.rate   = 1.9; // Super fast Mangaluru style
     utt.pitch  = 1.0;
     utt.volume = 1.0;
     utt.onend  = resolve;
