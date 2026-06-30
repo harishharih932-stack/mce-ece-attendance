@@ -6,11 +6,27 @@ AI-powered voice attendance system using **Groq Whisper** for speech-to-text and
 ---
 
 ## 🔗 Live Link
-🚀 **[Launch Attendance App](https://mce-ece-attendance.vercel.app/attendance.html)**
+🚀 **[https://mce-ece-attendance.vercel.app/attendance.html](https://mce-ece-attendance.vercel.app/attendance.html)**
 
 ---
 
-## ✨ Features
+## 📸 Screenshots
+
+### 1. Attendance Dashboard
+![Attendance Interface](https://raw.githubusercontent.com/Harish-H-H/attendance-app/main/screenshots/dashboard.png)
+*Live tracking with student list and status.*
+
+### 2. Settings & Configuration
+![Settings Page](https://raw.githubusercontent.com/Harish-H-H/attendance-app/main/screenshots/settings.png)
+*Configure Groq API Key, Telegram Bot, and Mic Sensitivity.*
+
+### 3. Automated Reports (CSV/Excel)
+![CSV Export](https://raw.githubusercontent.com/Harish-H-H/attendance-app/main/screenshots/export.png)
+*Detailed attendance logs exported directly to Excel.*
+
+---
+
+## ✨ Key Features
 - ⚡ **Super Fast Calling:** Optimized at 1.9x speed (Mangaluru style) for quick rolls.
 - 🎙️ **AI Voice Recognition:** Uses `whisper-large-v3-turbo` to detect "Present", "Yes", "Haan", etc.
 - 📸 **AI Headcount:** Takes a classroom photo to detect proxies by comparing student count with attendance.
@@ -49,13 +65,3 @@ AI-powered voice attendance system using **Groq Whisper** for speech-to-text and
 ## 👨‍💻 Built for
 **EC1 Section · ECE Dept · MCE Hassan · 2024–28**
 Designed for speed, accuracy, and ease of use.
-
----
-
-## 📁 Project Structure
-- `login.html`: Teacher authentication.
-- `settings.html`: API & Telegram configuration.
-- `attendance.html`: Live attendance engine.
-- `js/students.js`: Complete student list (65) with custom pronunciation fixes.
-- `js/voice.js`: The AI brain for listening and speaking.
-- `js/groq.js`: vision headcount and export logic.
