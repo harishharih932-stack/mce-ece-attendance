@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EC1 Attendance — Login</title>
+<link rel="stylesheet" href="css/style.css"/>
+</head>
+<body class="login-page">
+<div class="login-card">
+  <div class="login-header">
+    <div class="college-logo">🎓</div>
+    <h1>Malnad College of Engineering</h1>
+    <p class="subtitle">ECE Department · 2024–28 Batch</p>
+  </div>
+  <div class="login-body">
+    <h2>Teacher Login</h2>
+    <div class="field">
+      <label>Your Name</label>
+      <input type="text" id="teacher" placeholder="e.g. Dr. Ramesh Kumar" autocomplete="off"/>
+    </div>
+    <div class="field">
+      <label>Subject / Period</label>
+      <input type="text" id="subject" placeholder="e.g. Analog Electronics — Period 3" autocomplete="off"/>
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Enter Classroom →</button>
+    <p class="error" id="err" style="display:none">Please fill in both fields.</p>
+  </div>
+</div>
+<script>
+  // Pre-fill from last session
+  const saved = JSON.parse(localStorage.getItem('session') || '{}');
+  if (saved.teacher) document.getElementById('teacher').value = saved.teacher;
+  if (saved.subject) document.getElementById('subject').value = saved.subject;
+
+  function doLogin() {
+    const teacher = document.getElementById('teacher').value.trim();
+    const subject = document.getElementById('subject').value.trim();
+    if (!teacher || !subject) {
+      document.getElementById('err').style.display = 'block';
+      return;
+    }
+    localStorage.setItem('session', JSON.stringify({ teacher, subject, date: new Date().toISOString() }));
+    window.location.href = 'settings.html';
+  }
+
+  // Enter key support
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>

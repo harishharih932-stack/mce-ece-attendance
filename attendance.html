@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EC1 Attendance — Live</title>
+<link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="logo-icon">🎓</span>
+    <div>
+      <div class="topbar-title">EC1 Voice Attendance</div>
+      <div class="topbar-sub" id="hdr-sub">Malnad College of Engineering</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="badge-live" id="live-badge">● SETUP</span>
+  </div>
+</header>
+
+<!-- STATS BAR -->
+<div class="stats-bar">
+  <div class="stat-card green">
+    <div class="stat-label">✅ Present</div>
+    <div class="stat-val" id="cnt-present">0</div>
+  </div>
+  <div class="stat-card red">
+    <div class="stat-label">❌ Absent</div>
+    <div class="stat-val" id="cnt-absent">0</div>
+  </div>
+  <div class="stat-card blue">
+    <div class="stat-label">⏳ Pending</div>
+    <div class="stat-val" id="cnt-pending">65</div>
+  </div>
+  <div class="stat-card white flex1">
+    <div class="stat-label">Currently Calling</div>
+    <div class="stat-name" id="curr-name">—</div>
+    <div class="stat-status" id="curr-status">Waiting…</div>
+  </div>
+  <div class="stat-card white override-card">
+    <div class="stat-label">Manual Override</div>
+    <div class="override-btns">
+      <button class="btn-green" onclick="manualMark('present')">✔ Present</button>
+      <button class="btn-red"   onclick="manualMark('absent')">✘ Absent</button>
+    </div>
+  </div>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap">
+  <table class="att-table" id="att-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Student Name</th>
+        <th>USN</th>
+        <th>Status</th>
+        <th>Time</th>
+      </tr>
+    </thead>
+    <tbody id="att-body"></tbody>
+  </table>
+</div>
+
+<!-- BOTTOM TOOLBAR -->
+<div class="bottom-bar">
+  <button class="btn-amber" id="btn-stop" onclick="stopAttendance()">⏹ STOP</button>
+  <button class="btn-gray"  onclick="doExport()">💾 Export CSV</button>
+  <span class="log-text" id="log-text">Ready</span>
+</div>
+
+<!-- SCRIPTS -->
+<script src="js/students.js"></script>
+<script src="js/voice.js"></script>
+<script src="js/sounds.js"></script>
+<script src="js/groq.js"></script>
+<script>
+// ── STATE ────────────────────────────────────────────────────────────────────
+let running      = false;
+let stopFlag     = false;
+let records      = [];
+let nPresent     = 0;
+let nAbsent      = 0;
+let currentIdx   = -1;
+let manualResult = null; // set by manualMark()
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+const sess = JSON.parse(localStorage.getItem('session') || '{}');
+document.getElementById('hdr-sub').textContent =
+  `${sess.teacher || 'Teacher'} · ${sess.subject || 'Subject'} · ${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})}`;
+
+// Build table rows
+const tbody = document.getElementById('att-body');
+STUDENTS.forEach(s => {
+  const tr = document.createElement('tr');
+  tr.id = `row-${s.sl}`;
+  tr.innerHTML = `<td>${s.sl}</td><td>${s.name}</td><td>${s.usn}</td><td id="st-${s.sl}">—</td><td id="tm-${s.sl}">—</td>`;
+  tbody.appendChild(tr);
+});
+
+// ── UTILS ────────────────────────────────────────────────────────────────────
+function setLog(msg) { document.getElementById('log-text').textContent = msg; }
+function setCurrName(n) { document.getElementById('curr-name').textContent = n; }
+function setCurrStatus(s) { document.getElementById('curr-status').textContent = s; }
+function updateCounts() {
+  document.getElementById('cnt-present').textContent = nPresent;
+  document.getElementById('cnt-absent').textContent  = nAbsent;
+  document.getElementById('cnt-pending').textContent = 65 - nPresent - nAbsent;
+  document.getElementById('live-badge').textContent  = `● ${nPresent}P / ${nAbsent}A`;
+}
+
+function highlightRow(sl, tag) {
+  // Clear previous current
+  document.querySelectorAll('tr.row-current').forEach(r => r.classList.remove('row-current'));
+  const tr = document.getElementById(`row-${sl}`);
+  if (!tr) return;
+  tr.className = tag === 'current' ? 'row-current' :
+                 tag === 'present' ? 'row-present' :
+                 tag === 'absent'  ? 'row-absent'  : '';
+  if (tag === 'current') tr.scrollIntoView({ behavior:'smooth', block:'center' });
+}
+
+function markRow(sl, status, time) {
+  document.getElementById(`st-${sl}`).textContent = status;
+  document.getElementById(`tm-${sl}`).textContent = time;
+  highlightRow(sl, status.toLowerCase());
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── MANUAL OVERRIDE ───────────────────────────────────────────────────────────
+function manualMark(verdict) { manualResult = verdict; }
+
+// ── MAIN LOOP ────────────────────────────────────────────────────────────────
+async function startAttendance() {
+  running  = true;
+  stopFlag = false;
+  records  = [];
+  nPresent = 0;
+  nAbsent  = 0;
+  updateCounts();
+
+  await loadVoice();
+  await speak("Alright everyone, let's take attendance real quick. Say present or just make any sound when I call your name!");
+
+  for (let i = 0; i < STUDENTS.length; i++) {
+    if (stopFlag) break;
+    currentIdx   = i;
+    manualResult = null;
+    const s = STUDENTS[i];
+
+    highlightRow(s.sl, 'current');
+    setCurrName(`#${s.sl} ${s.name}`);
+    setCurrStatus('🔊 Calling…');
+    setLog(`Calling #${s.sl} — ${s.name}`);
+    playTick();
+
+    const spoken = pronounceable(s.name);
+
+    // ── FIRST CALL — record starts BEFORE speaking ──
+    const rec1 = recordAndTranscribe(3);
+    await speak(`Hey ${spoken}, present?`);
+    setCurrStatus('🎙 Listening…');
+    const txt1 = await rec1;
+
+    // Check manual override
+    let result = manualResult || classifyResponse(txt1);
+
+    // ── RETRY if no clear response ──
+    if (!result) {
+      setCurrStatus('🔊 Retry…');
+      const rec2 = recordAndTranscribe(3);
+      await speak(`Aye ${spoken}, you there?`);
+      setCurrStatus('🎙 Listening…');
+      const txt2 = await rec2;
+      result = manualResult || classifyResponse(txt2);
+    }
+
+    // ── DECIDE ──
+    const isPresent = result === 'present';
+    const status    = isPresent ? 'Present' : 'Absent';
+    const time      = new Date().toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+    if (isPresent) { nPresent++; playPresent(); }
+    else           { nAbsent++;  playAbsent();  }
+
+    records.push({ sl: s.sl, name: s.name, usn: s.usn, status, time });
+    markRow(s.sl, status, time);
+    updateCounts();
+    setLog(`#${s.sl} ${s.name} → ${status}`);
+  }
+
+  // ── DONE ────────────────────────────────────────────────────────────────────
+  if (!stopFlag) {
+    running = false;
+    setCurrName('Done ✅');
+    setCurrStatus('Attendance complete');
+    playDone();
+    await speak(`Done! ${nPresent} present, ${nAbsent} absent. See you all next class!`);
+    setLog(`Done — ${nPresent} present, ${nAbsent} absent`);
+    await postActions();
+  }
+}
+
+// ── POST ACTIONS ─────────────────────────────────────────────────────────────
+async function postActions() {
+  const sess = JSON.parse(localStorage.getItem('session') || '{}');
+
+  // Camera headcount
+  setLog('📷 Taking class photo for headcount…');
+  const vision = await takePhotoAndCount();
+  let visionLine = '';
+  if (vision) {
+    visionLine = `📷 Camera count: ${vision.count} (confidence: ${vision.confidence})`;
+    if (vision.count > nPresent + 2) {
+      const warn = `⚠️ Proxy Alert! Camera detected ${vision.count} people but only ${nPresent} marked present. Manual check recommended.`;
+      setLog(warn);
+      alert(warn);
+    } else if (vision.confidence === 'low') {
+      setLog('📷 Photo unclear — manual headcount recommended');
+    }
+  }
+
+  // Build report
+  const absentList = records.filter(r => r.status === 'Absent')
+    .map(r => `• ${r.name} (${r.usn})`).join('\n');
+  const date = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
+  const report = `📋 Attendance Report
+Date: ${date}
+Teacher: ${sess.teacher || '—'}
+Subject: ${sess.subject || '—'}
+
+✅ Present: ${nPresent}/65
+❌ Absent: ${nAbsent}/65
+${visionLine}
+
+Absent students:
+${absentList || 'None'}`;
+
+  // Send Telegram
+  await sendTelegram(report);
+}
+
+// ── STOP ─────────────────────────────────────────────────────────────────────
+function stopAttendance() {
+  stopFlag = true;
+  running  = false;
+  speak('Attendance stopped.');
+  setLog('Stopped by teacher.');
+  setCurrStatus('Stopped');
+}
+
+// ── EXPORT ───────────────────────────────────────────────────────────────────
+function doExport() {
+  if (!records.length) { alert('No records yet.'); return; }
+  exportCSV(records);
+}
+
+// ── AUTO START ───────────────────────────────────────────────────────────────
+window.onload = () => {
+  const cfg = JSON.parse(localStorage.getItem('config') || '{}');
+  if (!cfg.groqKey) {
+    alert('No Groq API key found. Please go to Settings first.');
+    window.location.href = 'settings.html';
+    return;
+  }
+  startAttendance();
+};
+</script>
+</body>
+</html>

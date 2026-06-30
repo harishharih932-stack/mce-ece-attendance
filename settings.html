@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EC1 Attendance — Settings</title>
+<link rel="stylesheet" href="css/style.css"/>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-left">
+    <span class="logo-icon">🎓</span>
+    <div>
+      <div class="topbar-title">EC1 Voice Attendance</div>
+      <div class="topbar-sub">Malnad College of Engineering</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span id="hdr-teacher"></span>
+    <a href="login.html" class="link-small">Change</a>
+  </div>
+</header>
+
+<div class="page-content">
+  <div class="section-card">
+    <div class="section-title">① Groq API Key</div>
+    <p class="section-hint">Required for voice detection and camera headcount. <a href="https://console.groq.com/keys" target="_blank">Get free key →</a></p>
+    <div class="field row-field">
+      <input type="password" id="groq-key" placeholder="gsk_..." class="flex1"/>
+      <button class="btn-icon" onclick="toggleKey()" title="Show/Hide">👁</button>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">② Telegram <span class="badge-optional">Optional</span></div>
+    <p class="section-hint">Leave empty if you don't want Telegram reports.</p>
+    <div class="field">
+      <label>Bot Token</label>
+      <input type="text" id="tg-token" placeholder="123456:ABC-DEF..."/>
+    </div>
+    <div class="field">
+      <label>Chat ID</label>
+      <input type="text" id="tg-chat" placeholder="-100123456789"/>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">③ Mic Sensitivity</div>
+    <div class="slider-row">
+      <span class="slider-label">Softer voices</span>
+      <input type="range" id="mic-sens" min="200" max="1500" value="900" oninput="document.getElementById('sens-val').textContent=this.value"/>
+      <span class="slider-label">Noisier room</span>
+      <span class="sens-badge" id="sens-val">900</span>
+    </div>
+  </div>
+
+  <div class="section-card">
+    <div class="section-title">④ System Status</div>
+    <div class="status-badges" id="status-badges">
+      <span class="badge checking">⏳ Checking...</span>
+    </div>
+  </div>
+
+  <button class="btn-primary btn-large" onclick="startAttendance()">▶ START ATTENDANCE</button>
+</div>
+
+<script>
+  // Load saved settings
+  const cfg = JSON.parse(localStorage.getItem('config') || '{}');
+  const sess = JSON.parse(localStorage.getItem('session') || '{}');
+  document.getElementById('hdr-teacher').textContent = sess.teacher || '';
+  if (cfg.groqKey) document.getElementById('groq-key').value = cfg.groqKey;
+  if (cfg.tgToken) document.getElementById('tg-token').value = cfg.tgToken;
+  if (cfg.tgChat)  document.getElementById('tg-chat').value  = cfg.tgChat;
+  if (cfg.micSens) {
+    document.getElementById('mic-sens').value = cfg.micSens;
+    document.getElementById('sens-val').textContent = cfg.micSens;
+  }
+
+  function toggleKey() {
+    const inp = document.getElementById('groq-key');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+
+  // System status check
+  async function checkStatus() {
+    const badges = document.getElementById('status-badges');
+    badges.innerHTML = '';
+
+    // Voice
+    const hasVoice = 'speechSynthesis' in window;
+    badges.innerHTML += `<span class="badge ${hasVoice?'ok':'fail'}">${hasVoice?'✔':'✘'} AI Voice</span>`;
+
+    // Mic
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+      s.getTracks().forEach(t => t.stop());
+      badges.innerHTML += `<span class="badge ok">✔ Microphone</span>`;
+    } catch {
+      badges.innerHTML += `<span class="badge fail">✘ Microphone</span>`;
+    }
+
+    // Camera
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: true });
+      s.getTracks().forEach(t => t.stop());
+      badges.innerHTML += `<span class="badge ok">✔ Camera</span>`;
+    } catch {
+      badges.innerHTML += `<span class="badge warn">⚠ Camera (optional)</span>`;
+    }
+
+    // Groq key
+    const key = document.getElementById('groq-key').value.trim();
+    badges.innerHTML += `<span class="badge ${key?'ok':'warn'}">${key?'✔':'⚠'} Groq API Key</span>`;
+  }
+
+  checkStatus();
+
+  function saveConfig() {
+    localStorage.setItem('config', JSON.stringify({
+      groqKey: document.getElementById('groq-key').value.trim(),
+      tgToken: document.getElementById('tg-token').value.trim(),
+      tgChat:  document.getElementById('tg-chat').value.trim(),
+      micSens: document.getElementById('mic-sens').value,
+    }));
+  }
+
+  function startAttendance() {
+    const key = document.getElementById('groq-key').value.trim();
+    if (!key) {
+      alert('Please enter your Groq API key first.\nGet it free at console.groq.com/keys');
+      return;
+    }
+    saveConfig();
+    window.location.href = 'attendance.html';
+  }
+</script>
+</body>
+</html>
